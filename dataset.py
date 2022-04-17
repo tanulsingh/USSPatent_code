@@ -57,14 +57,21 @@ class STSCrossEncTypeDataset(Dataset):
 
         if self.context_type == 'a':
             text = TOKENIZER(
-                context + sep_token + sent_a,
-                sent_b,
+                context + sep_token + sent_a + sep_token + sent_b,
                 padding='max_length', 
                 truncation=True, 
                 max_length=MAX_LENGTH, 
                 return_tensors="pt"
             )
-        else:
+        elif self.context_type == 'b':
+            text = TOKENIZER(
+                sent_a + sep_token + sent_b + sep_token + context,
+                padding='max_length', 
+                truncation=True, 
+                max_length=MAX_LENGTH, 
+                return_tensors="pt"
+            )
+        else: 
             text = TOKENIZER(
                 f'context : {context} {sep_token} sentence : {sent_a}',
                 sent_b,
@@ -115,6 +122,9 @@ class QATypeDataset(Dataset):
 def get_loader(data,fold,solution_type='STS',debug=False):
     train = data[data['kfold']!=fold]
     valid = data[data['kfold']==fold]
+    
+    print('Solution_type',solution_type)
+    print('context_type',context_type)
 
     if solution_type == 'STSbienc':
         train_dataset = STSBiEncTypeDataset(csv=train,context_type=context_type)
@@ -156,8 +166,10 @@ def get_loader(data,fold,solution_type='STS',debug=False):
 if __name__ == '__main__':
     import pandas as pd
 
-    data = pd.read_csv('data/train_folds.csv')
-    train_loader,valid_loader = get_loader(data,fold=0,solution_type='QA',debug=False)
+    data = pd.read_csv(f'data/train_folds.csv')
+    titles = pd.read_csv('data/titles.csv')
+    data = data.merge(titles[['context','context_text']],on='context')
+    train_loader,valid_loader = get_loader(data,fold=0,solution_type='STScrossenc',debug=False)
 
     for i in train_loader:
         print(i[2].view(-1,1).shape)

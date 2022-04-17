@@ -17,7 +17,7 @@ def run(data,fold):
 
     seed_everything(SEED)
     
-    train_loader,valid_loader = get_loader(data,fold)
+    train_loader,valid_loader = get_loader(data,fold,solution_type=solution_type)
     
     seed_everything(SEED)
     
@@ -54,8 +54,8 @@ def run(data,fold):
     for epoch in range(EPOCHS):
         train_loss = train_fn(train_loader, model,criterion, optimizer, device,scheduler=scheduler,epoch=epoch)
         valid_loss,valid_out,valid_tar,valid_id = eval_fn(valid_loader, model, criterion,device,epoch=epoch)
-
-        pearson = stats.pearsonr(valid_tar, valid_out)[0]
+        
+        pearson = np.corrcoef(valid_out, valid_tar)[0][1]
 
         LOGGER.info(f'-------  Metrics for Epoch {epoch} --------')
         LOGGER.info(f'Train Loss : {train_loss.avg}')
@@ -95,19 +95,20 @@ if __name__ == "__main__":
     fin_pred = []
     fin_id = []
 
-    for i in range(5):
+    for i in range(1):
         oof_tar,oof_pred,oof_id = run(data,i)
         fin_tar.append(oof_tar)
         fin_pred.append(oof_pred)
         fin_id.append(oof_id)
+        
+    if i > 1:
+        fin_tar = np.concatenate(fin_tar)
+        fin_pred = np.concatenate(fin_pred)
+        fin_id = np.concatenate(fin_id)
 
-    fin_tar = np.concatenate(fin_tar)
-    fin_pred = np.concatenate(fin_pred)
-    fin_id = np.concatenate(fin_id)
+        LOGGER.info(f"OOF Pearson Score : {np.corrcoef(fin_pred, fin_tar)[0][1]}")
 
-    LOGGER.info(f"OOF Pearson Score : {stats.pearsonr(fin_tar, fin_pred)[0]}")
-
-    df_oof = pd.DataFrame(dict(
-    id = fin_id, target=fin_tar, pred = fin_pred))
-    df_oof.to_csv(f'{SAVE_DIR}/oof.csv',index=False)
-    df_oof.head()
+        df_oof = pd.DataFrame(dict(
+        id = fin_id, target=fin_tar, pred = fin_pred))
+        df_oof.to_csv(f'{SAVE_DIR}/oof.csv',index=False)
+        df_oof.head()
