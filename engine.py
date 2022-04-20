@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import config
 from train_utils import AverageMeter,PearsonMeter
+import torch.nn.functional as F
 
 
 def train_fn(dataloader,model,criterion,optimizer,device,scheduler,epoch):
@@ -30,21 +31,26 @@ def train_fn(dataloader,model,criterion,optimizer,device,scheduler,epoch):
         if config.mixed_precision:
             with torch.cuda.amp.autocast():
                 output = model(input_ids,attention_mask)
-                loss = criterion(output,targets.view(-1,1))
-
+                #loss = criterion(output,targets.view(-1,1))
+                loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
+                #loss = criterion(output.squeeze(-1),targets)
+                
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
             output = model(input_ids,attention_mask)
-            loss = criterion(output,targets.view(-1,1))
+            #loss = criterion(output,targets.view(-1,1))
+            loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
+            #loss = criterion(output.squeeze(-1),targets)
         
             loss.backward()
             optimizer.step()
         
         loss_score.update(loss.detach().item(), batch_size)
         
-        pearson.update(targets,output.sigmoid().squeeze(-1))
+        pearson.update(targets,output.squeeze(-1))
+        #pearson.update(targets,output.sigmoid().squeeze(-1))
         tk0.set_postfix(Train_Loss=loss_score.avg,Train_Pearson=pearson.avg,Epoch=epoch,LR=optimizer.param_groups[0]['lr'])
         
         if scheduler is not None:
@@ -81,14 +87,18 @@ def eval_fn(dataloader,model,criterion,device,epoch):
             targets = targets.to(device)
 
             output = model(input_ids,attention_mask)
-            loss = criterion(output,targets.view(-1,1))
+            #loss = criterion(output,targets.view(-1,1))
+            loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
+            #loss = criterion(output.squeeze(-1),targets)
 
             loss_score.update(loss.detach().item(), batch_size)
-            pearson.update(targets,output.sigmoid().squeeze(-1))
+            #pearson.update(targets,output.sigmoid().squeeze(-1))
+            pearson.update(targets,output.squeeze(-1))
             
             tk0.set_postfix(Eval_Loss=loss_score.avg,Eval_Pearson_score=pearson.avg,Epoch=epoch)
             
-            output = output.sigmoid().squeeze(-1).detach().cpu().numpy()
+            output = output.squeeze(-1).detach().cpu().numpy()
+            #output = output.sigmoid().squeeze(-1).detach().cpu().numpy()
             targets = targets.detach().cpu().numpy()
             fin_out.append(output)
             fin_tar.append(targets)

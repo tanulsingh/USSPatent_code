@@ -30,6 +30,7 @@ def run(data,fold):
     
     #DEfining criterion
     criterion = nn.BCEWithLogitsLoss(reduction='mean')
+    #criterion = CorrLoss()
     criterion.to(device)
 
     param_optimizer = list(model.named_parameters())
@@ -76,6 +77,17 @@ def run(data,fold):
 
 if __name__ == "__main__":
     import shutil
+    
+    # mapping = {
+    # "A": "Human Necessities",
+    # "B": "Operations and Transport",
+    # "C": "Chemistry and Metallurgy",
+    # "D": "Textiles",
+    # "E": "Fixed Constructions",
+    # "F": "Mechanical Engineering",
+    # "G": "Physics",
+    # "H": "Electricity",
+    # "Y": "Emerging Cross-Sectional Technologies"}
 
     make_dir(SAVE_DIR)
     LOGGER = get_logger()
@@ -88,14 +100,20 @@ if __name__ == "__main__":
     shutil.copy('model.py',SAVE_DIR)
 
     data = pd.read_csv(f'data/train_folds.csv')
-    titles = pd.read_csv('data/titles.csv')
-    data = data.merge(titles[['context','context_text']],on='context') 
+    # data['context'] = data['context'].apply(lambda x:x[0])
+    # data['context_text'] = data['context'].map(mapping)
+    #data = data.rename(columns={'context':'context_text'})
+    cpc_texts = torch.load("data/cpc_texts.pth")
+    
+    data['context_text'] = data['context'].map(cpc_texts)
+    print(data.head())
 
     fin_tar = []
     fin_pred = []
     fin_id = []
 
-    for i in range(1):
+    for i in range(NUM_FOLDS):
+        print(i)
         oof_tar,oof_pred,oof_id = run(data,i)
         fin_tar.append(oof_tar)
         fin_pred.append(oof_pred)

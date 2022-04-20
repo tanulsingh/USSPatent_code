@@ -20,7 +20,6 @@ class CustomModel(nn.Module):
 
         self.dropout = nn.Dropout(self.config.hidden_dropout_prob)
         self.fc = nn.Linear(self.config.hidden_size, num_output)
-        self._init_weights(self.fc)
 
         if self.pooling == 'attention':
             self.attention = nn.Sequential(
