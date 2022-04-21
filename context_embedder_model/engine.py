@@ -1,4 +1,3 @@
-from black import out
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -18,19 +17,19 @@ def train_fn(dataloader,model,criterion,optimizer,device,scheduler,epoch):
     tk0 = tqdm(enumerate(dataloader), total=len(dataloader))
     for bi,d in tk0:
         
-        batch_size = d[0].shape[0]
+        batch_size = d[2].shape[0]
 
-        input_ids = d[0]
-        attention_mask = d[1]
+        input_encoding = d[0]
+        context_encoding = d[1]
         targets = d[2]
 
-        input_ids = input_ids.to(device)
-        attention_mask = attention_mask.to(device)
+        input_encoding = {k:v.to(device) for k, v in input_encoding.items()}
+        context_encoding = {k:v.to(device) for k, v in context_encoding.items()}
         targets = targets.to(device)
 
         if config.mixed_precision:
             with torch.cuda.amp.autocast():
-                output = model(input_ids,attention_mask)
+                output = model(input_encoding,context_encoding)
                 loss = criterion(output,targets.view(-1,1))
                 #loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
                 #loss = criterion(output.squeeze(-1),targets)
@@ -39,7 +38,7 @@ def train_fn(dataloader,model,criterion,optimizer,device,scheduler,epoch):
             scaler.step(optimizer)
             scaler.update()
         else:
-            output = model(input_ids,attention_mask)
+            output = model(context_encoding,context_encoding)
             loss = criterion(output,targets.view(-1,1))
             #loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
             #loss = criterion(output.squeeze(-1),targets)
@@ -75,18 +74,18 @@ def eval_fn(dataloader,model,criterion,device,epoch):
         tk0 = tqdm(enumerate(dataloader), total=len(dataloader))
         for bi,d in tk0:
 
-            batch_size = d[0].shape[0]
+            batch_size = d[2].shape[0]
 
-            input_ids = d[0]
-            attention_mask = d[1]
+            input_encoding = d[0]
+            context_encoding = d[1]
             targets = d[2]
+
+            input_encoding = {k:v.to(device) for k, v in input_encoding.items()}
+            context_encoding = {k:v.to(device) for k, v in context_encoding.items()}
+            targets = targets.to(device)
             id = d[3]
 
-            input_ids = input_ids.to(device)
-            attention_mask = attention_mask.to(device)
-            targets = targets.to(device)
-
-            output = model(input_ids,attention_mask)
+            output = model(input_encoding,context_encoding)
             loss = criterion(output,targets.view(-1,1))
             #loss = F.mse_loss(output.squeeze(-1), targets, reduction="mean")
             #loss = criterion(output.squeeze(-1),targets)
